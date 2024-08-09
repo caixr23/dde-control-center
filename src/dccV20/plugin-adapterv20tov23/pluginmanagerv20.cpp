@@ -13,7 +13,7 @@
 #include <QLoggingCategory>
 
 Q_LOGGING_CATEGORY(DdcAdapterV20toV23Worker, "dcc-adapterv20tov23-worker")
-const QString &PluginDirectory = QStringLiteral(DefaultModuleDirectory);
+const QString &PluginDirectory = QStringLiteral("/usr/lib/dde-control-center/modules");
 
 using namespace DCC_NAMESPACE;
 using namespace dccV20;

@@ -116,10 +116,6 @@ dtk_add_config_meta_files(APPID org.deepin.dde.control-center BASE misc/configs 
 file(GLOB DCONFIG_FILE_REGION_FORMAT "misc/configs/common/org.deepin.region-format.json")
 dtk_add_config_meta_files(COMMONID true FILES ${DCONFIG_FILE_REGION_FORMAT})
 
-include_directories(
-    include
-)
-
 set(Test_Libraries
     -lgcov
     Threads::Threads
@@ -143,6 +139,7 @@ set(Interface_Libraries
 )
 
 target_include_directories(${Interface_Name} PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/interface>
 )
 
@@ -182,6 +179,7 @@ add_library(${Dcc_Widgets_Name} SHARED
     ${Dcc_Widgets_SRCS}
 )
 set(Dcc_Widgets_Includes
+    include
     include/widgets
 )
 
@@ -202,6 +200,7 @@ set(Dcc_Widgets_Libraries
 )
 
 target_include_directories(${Dcc_Widgets_Name} PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/widgets>
 )
 
@@ -354,6 +353,7 @@ if (UNITTEST)
     )
 
     set(Interface_Includes
+        include
         include/interface
     )
 
@@ -1357,11 +1357,41 @@ if (BUILD_PLUGIN)
 
     install(TARGETS ${Wacom_Name} DESTINATION ${MODULE_INSTALL_DIR})
 endif()
+#--------------------------dccwidgetsV20--------------------------
+# V20兼容处理，配置保持V20一致
+if (BUILD_PLUGIN)
+    set(dccwidgetsV20_Name dccwidgets)
+    file(GLOB_RECURSE dccwidgetsV20_SRCS
+        "src/dccV20/widgets/*.h"
+        "src/dccV20/widgets/*.cpp"
+        "src/dccV20/widgets/*.qrc"
+    )
+    add_definitions(-DWINDOW_MODE)
+    add_library(${dccwidgetsV20_Name} MODULE
+        ${dccwidgetsV20_SRCS}
+    )
+
+    set(dccwidgetsV20_Libraries
+        Dtk::Widget
+        Qt::Widgets
+        Qt::Svg
+    )
+
+
+    target_link_libraries(${dccwidgetsV20_Name} PRIVATE
+        ${dccwidgetsV20_Libraries}
+    )
+    target_include_directories(${dccwidgetsV20_Name} PRIVATE
+        "src/dccV20"
+    )
+
+    install(TARGETS ${dccwidgetsV20_Name} LIBRARY DESTINATION lib)
+endif()
 #--------------------------plugin-adapterv20tov23--------------------------
 if (BUILD_PLUGIN)
     set(AdapterV20toV23_Name dcc-adapterv20tov23-plugin)
     file(GLOB_RECURSE ADAPTERV20TOV23_SRCS
-        "src/plugin-adapterv20tov23/*.cpp"
+        "src/dccV20/plugin-adapterv20tov23/*.cpp"
     )
 
     add_library(${AdapterV20toV23_Name} MODULE
