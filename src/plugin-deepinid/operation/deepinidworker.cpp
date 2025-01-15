@@ -35,6 +35,9 @@ void DeepinWorker::initData()
 {
     licenseStateChangeSlot();
     m_model->setUserinfo(m_deepinIDProxy->userInfo());
+
+    // 获取认证状态
+    licenseStateChangeSlot();
 }
 
 void DeepinWorker::loginUser()
