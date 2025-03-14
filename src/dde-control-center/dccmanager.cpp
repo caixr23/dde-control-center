@@ -116,6 +116,7 @@ void DccManager::setMainWindow(QWindow *window)
     m_window = window;
     connect(m_window, &QWindow::widthChanged, this, &DccManager::saveSize);
     connect(m_window, &QWindow::heightChanged, this, &DccManager::saveSize);
+    m_window->installEventFilter(this);
 }
 
 void DccManager::loadModules(bool async, const QStringList &dirs)
@@ -435,6 +436,28 @@ DccObject *DccManager::findParent(const DccObject *obj)
         }
     }
     return findObject(path);
+}
+
+bool DccManager::eventFilter(QObject *watched, QEvent *event)
+{
+    if (m_window && watched == m_window && event->type() == QEvent::MouseButtonPress) {
+        QMouseEvent *e = static_cast<QMouseEvent *>(event);
+        qWarning()<<__LINE__<<__FUNCTION__<<e->buttons() <<e->button();
+        if (e->buttons() == Qt::LeftButton) {
+            QQuickItem *focusItem = m_window->property("activeFocusItem").value<QQuickItem *>();
+            if (focusItem) {
+                QQuickItem *defaultItem = m_window->property("defaultItem").value<QQuickItem *>();
+                if (defaultItem && focusItem != defaultItem) {
+                    QPointF point = focusItem->mapFromGlobal(e->globalPosition());
+                    QRectF rect(0, 0, focusItem->width(), focusItem->height());
+                    if (!rect.contains(point)) {
+                        defaultItem->forceActiveFocus();
+                    }
+                }
+            }
+        }
+    }
+    return DccApp::eventFilter(watched, event);
 }
 
 void DccManager::saveSize()

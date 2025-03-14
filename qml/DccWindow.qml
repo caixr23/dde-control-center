@@ -15,6 +15,7 @@ D.ApplicationWindow {
     property string appLicense: "GPL-3.0-or-later"
     property real currentIndex: 1
     property var sidebarPage: null
+    property alias defaultItem: centralView
 
     minimumWidth: 520
     minimumHeight: 400
@@ -170,26 +171,6 @@ D.ApplicationWindow {
         id: centralView
         hoverEnabled: false
         anchors.fill: parent
-    }
-
-    // FIXME：any better way ?
-    MouseArea {
-        z: 99
-        anchors.fill: parent
-        acceptedButtons: Qt.LeftButton
-
-        onPressed: function (mouse) {
-            mouse.accepted = false
-
-            if (!root.activeFocusItem)
-                return
-
-            let pt = mapToItem(root.activeFocusItem, mouse.x, mouse.y)
-            // clear focus if click out of activeFocusItem
-            if (!root.activeFocusItem.contains(pt)) {
-                centralView.forceActiveFocus()
-            }
-        }
     }
 
 
