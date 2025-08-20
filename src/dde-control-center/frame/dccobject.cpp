@@ -10,6 +10,7 @@
 #include <QQuickItem>
 #include <QQuickWindow>
 #include <QTimer>
+#include <QQmlEngine>
 
 namespace dccV25 {
 static Q_LOGGING_CATEGORY(dccLog, "dde.dcc.object");
@@ -250,6 +251,7 @@ DccObject::DccObject(QObject *parent)
     connect(this, &DccObject::deactive, this, [this]() {
         p_ptr->deleteSectionItem();
     });
+    QQmlEngine::setObjectOwnership(this,QQmlEngine::CppOwnership);
 }
 
 DccObject::~DccObject()
@@ -494,6 +496,7 @@ QQuickItem *DccObject::getSectionItem(QObject *)
         }
 #endif
     }
+    QQmlEngine::setObjectOwnership(p_ptr->m_sectionItem.get(),QQmlEngine::CppOwnership);
     return p_ptr->m_sectionItem.get();
 }
 

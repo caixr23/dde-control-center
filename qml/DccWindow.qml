@@ -107,6 +107,7 @@ D.ApplicationWindow {
                 if (root.sidebarPage) {
                     root.sidebarPage.targetSidebar()
                 }
+                gc()
             }
         }
         content: Item {

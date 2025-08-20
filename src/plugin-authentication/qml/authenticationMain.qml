@@ -1,6 +1,6 @@
+
 // SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
 // SPDX-License-Identifier: GPL-3.0-or-later
-
 import QtQuick
 import QtQuick.Window 2.15
 import QtQuick.Controls 2.3
@@ -24,32 +24,28 @@ DccObject {
 
     DccRepeater {
         id: rep
-        model: [
-            {
-                authTitle: qsTr("Face"),
-                authDescription: qsTr("Up to 5 facial data can be entered"),
-                authIcon: "user_biometric_face",
-                authType: CharaMangerModel.Type_Face,
-                available: dccData.model.faceDriverVaild,
-                max: 5
-            },
-            {
-                authTitle: qsTr("Fingerprint"),
-                authDescription: qsTr("Identifying user identity through scanning fingerprints"),
-                authIcon: "user_biometric_fingerprint",
-                authType: CharaMangerModel.Type_Finger,
-                available: dccData.model.fingerDriverVaild,
-                max: 10
-            },
-            {
-                authTitle: qsTr("Iris"),
-                authDescription: qsTr("Identity recognition through iris scanning"),
-                authIcon: "user_biometric_iris",
-                authType: CharaMangerModel.Type_Iris,
-                available: dccData.model.irisDriverVaild,
-                max: 10
-            }
-        ]
+        model: [{
+                "authTitle": qsTr("Face"),
+                "authDescription": qsTr("Up to 5 facial data can be entered"),
+                "authIcon": "user_biometric_face",
+                "authType": CharaMangerModel.Type_Face,
+                "available": dccData.model.faceDriverVaild,
+                "max": 5
+            }, {
+                "authTitle": qsTr("Fingerprint"),
+                "authDescription": qsTr("Identifying user identity through scanning fingerprints"),
+                "authIcon": "user_biometric_fingerprint",
+                "authType": CharaMangerModel.Type_Finger,
+                "available": dccData.model.fingerDriverVaild,
+                "max": 10
+            }, {
+                "authTitle": qsTr("Iris"),
+                "authDescription": qsTr("Identity recognition through iris scanning"),
+                "authIcon": "user_biometric_iris",
+                "authType": CharaMangerModel.Type_Iris,
+                "available": dccData.model.irisDriverVaild,
+                "max": 10
+            }]
         property var listDatas: [dccData.model.facesList, dccData.model.thumbsList, dccData.faceModel]
         delegate: DccObject {
             id: authenticationGroupView
@@ -96,7 +92,7 @@ DccObject {
                 Connections {
                     target: repeaterHeaderView.parentItem
                     function onClicked() {
-                        repeaterHeaderView.listVisible = !repeaterHeaderView.listVisible;
+                        repeaterHeaderView.listVisible = !repeaterHeaderView.listVisible
                     }
                 }
             }
@@ -116,28 +112,28 @@ DccObject {
                         function requestRename(id, newName) {
                             switch (itemRep.authType) {
                             case CharaMangerModel.Type_Face:
-                                dccData.renameFace(id, newName);
-                                break;
+                                dccData.renameFace(id, newName)
+                                break
                             case CharaMangerModel.Type_Finger:
-                                dccData.requestRenameFinger(id, newName);
-                                break;
+                                dccData.requestRenameFinger(id, newName)
+                                break
                             case CharaMangerModel.Type_Iris:
                                 // dccData.startEnrollIris()
-                                break;
+                                break
                             }
                         }
 
                         function requestDelete(id) {
                             switch (itemRep.authType) {
                             case CharaMangerModel.Type_Face:
-                                dccData.removeFace(id);
-                                break;
+                                dccData.removeFace(id)
+                                break
                             case CharaMangerModel.Type_Finger:
-                                dccData.requestRemoveFinger(id);
-                                break;
+                                dccData.requestRemoveFinger(id)
+                                break
                             case CharaMangerModel.Type_Iris:
                                 // dccData.startEnrollIris()
-                                break;
+                                break
                             }
                         }
 
@@ -155,55 +151,54 @@ DccObject {
                             color: palette.text
                             onEditingFinished: {
                                 if (!checkInputInvalid()) {
-                                    text = modelData;
-                                    return;
+                                    text = modelData
+                                    return
                                 }
-                                focus = false;
+                                focus = false
                                 if (modelData !== textInputItem.text) {
-                                    layout.requestRename(modelData, text);
+                                    layout.requestRename(modelData, text)
                                 }
                             }
                             onFocusChanged: {
                                 if (!focus)
-                                    readOnly = true;
+                                    readOnly = true
                             }
                             Keys.onEnterPressed: {
-                                focus = false;
+                                focus = false
                             }
 
                             function checkInputInvalid() {
-                                var reg = /^[A-Za-z0-9\u4e00-\u9fa5_]+$/;
-                                var isValid = reg.test(textInputItem.text);
-                                var isOverLength = textInputItem.text.length > 15;
-                                
-                                var nameList = [];
+                                var reg = /^[A-Za-z0-9\u4e00-\u9fa5_]+$/
+                                var isValid = reg.test(textInputItem.text)
+                                var isOverLength = textInputItem.text.length > 15
+
+                                var nameList = []
                                 switch (itemRep.authType) {
                                 case CharaMangerModel.Type_Face:
-                                    nameList = dccData.model.facesList;
-                                    break;
+                                    nameList = dccData.model.facesList
+                                    break
                                 case CharaMangerModel.Type_Finger:
-                                    nameList = dccData.model.thumbsList;
-                                    break;
+                                    nameList = dccData.model.thumbsList
+                                    break
                                 case CharaMangerModel.Type_Iris:
-                                    nameList = dccData.model.irisList;
-                                    break;
+                                    nameList = dccData.model.irisList
+                                    break
                                 }
-                                
-                                var isDuplicate = nameList.includes(textInputItem.text) && 
-                                                  textInputItem.text !== modelData;
+
+                                var isDuplicate = nameList.includes(textInputItem.text) && textInputItem.text !== modelData
 
                                 if (!isValid && isOverLength) {
-                                    alert.show(qsTr("Use letters, numbers and underscores only, and no more than 15 characters"));
+                                    alert.show(qsTr("Use letters, numbers and underscores only, and no more than 15 characters"))
                                 } else if (!isValid) {
-                                    alert.show(qsTr("Use letters, numbers and underscores only"));
+                                    alert.show(qsTr("Use letters, numbers and underscores only"))
                                 } else if (isOverLength) {
-                                    alert.show(qsTr("No more than 15 characters"));
+                                    alert.show(qsTr("No more than 15 characters"))
                                 } else if (isDuplicate) {
-                                    alert.show(qsTr("This name already exists"));
+                                    alert.show(qsTr("This name already exists"))
                                 } else {
-                                    return true;
+                                    return true
                                 }
-                                return false;
+                                return false
                             }
                         }
 
@@ -214,8 +209,8 @@ DccObject {
                             visible: false
 
                             function show(msg) {
-                                text = msg;
-                                visible = true;                                
+                                text = msg
+                                visible = true
                             }
                         }
 
@@ -230,8 +225,8 @@ DccObject {
                                 color: "transparent"
                             }
                             onClicked: {
-                                textInputItem.readOnly = false;
-                                textInputItem.focus = true;
+                                textInputItem.readOnly = false
+                                textInputItem.focus = true
                             }
                         }
                         D.ToolButton {
@@ -242,7 +237,7 @@ DccObject {
                                 color: "transparent"
                             }
                             onClicked: {
-                                layout.requestDelete(modelData);
+                                layout.requestDelete(modelData)
                             }
                         }
 
@@ -277,22 +272,22 @@ DccObject {
                         font: D.DTK.fontManager.t6
                         background: Item {}
                         onClicked: {
-                            startEnrollByType(modelData.authType);
+                            startEnrollByType(modelData.authType)
                         }
 
                         function startEnrollByType(type) {
                             switch (type) {
                             case CharaMangerModel.Type_Face:
-                                addFaceDialogLoader.active = true;
-                                addFaceDialogLoader.item.show();
-                                break;
+                                addFaceDialogLoader.active = true
+                                addFaceDialogLoader.item.show()
+                                break
                             case CharaMangerModel.Type_Finger:
-                                addFingerDialogLoader.active = true;
-                                addFingerDialogLoader.item.show();
-                                break;
+                                addFingerDialogLoader.active = true
+                                addFingerDialogLoader.item.show()
+                                break
                             case CharaMangerModel.Type_Iris:
-                                dccData.startEnrollIris();
-                                break;
+                                dccData.startEnrollIris()
+                                break
                             }
                         }
 
@@ -301,7 +296,7 @@ DccObject {
                             active: false
                             sourceComponent: AddFaceinfoDialog {
                                 onClosing: function (close) {
-                                    addFaceDialogLoader.active = false;
+                                    addFaceDialogLoader.active = false
                                 }
                             }
                         }
@@ -311,7 +306,7 @@ DccObject {
                             active: false
                             sourceComponent: AddFingerDialog {
                                 onClosing: function (close) {
-                                    addFingerDialogLoader.active = false;
+                                    addFingerDialogLoader.active = false
                                 }
                             }
                         }
@@ -321,7 +316,7 @@ DccObject {
                             active: false
                             sourceComponent: AddFaceinfoDialog {
                                 onClosing: function (close) {
-                                    addIrisDialogLoader.active = false;
+                                    addIrisDialogLoader.active = false
                                 }
                             }
                         }
