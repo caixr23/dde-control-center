@@ -121,7 +121,7 @@ DccImageProvider::~DccImageProvider()
 
 QImage *DccImageProvider::cacheImage(const QString &id, const QSize &thumbnailSize)
 {
-    return cacheImage(id, thumbnailSize, nullptr, QSize());
+    return cacheImage(id, thumbnailSize, new CacheImageResponse(id, QSize(), this), QSize());
 }
 
 QImage *DccImageProvider::cacheImage(const QString &id, const QSize &thumbnailSize, CacheImageResponse *response, const QSize &requestedSize)
