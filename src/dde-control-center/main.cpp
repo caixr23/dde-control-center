@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 - 2027 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "controlcenterdbusadaptor.h"
@@ -48,6 +48,7 @@ QString loggingRules(const QString &loggingModule)
 QStringList defaultpath()
 {
     QString pluginsDir(DefaultModuleDirectory);
+    pluginsDir="/usr/lib/x86_64-linux-gnu/dde-control-center";
     const QStringList path{ pluginsDir + "/plugins_v1.1", pluginsDir + "/plugins_v1.0" };
     // , QStringLiteral("/usr/lib/dde-control-center/modules/") };
     return path;

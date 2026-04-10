@@ -159,14 +159,36 @@ void LoadPluginTask::createData()
     }
     if (m_data->data) {
         m_data->data->moveToThread(m_pManager->thread());
-        m_data->data->setParent(m_pManager->parent());
     }
     if (m_data->soObj) {
         m_data->soObj->moveToThread(m_pManager->thread());
-        m_data->soObj->setParent(m_pManager->parent());
     }
     Q_EMIT m_pManager->updatePluginStatus(m_data, DataEnd, ": create data finished. elapsed time :" + QString::number(timer.elapsed()));
 }
+
+class DccIncubator : public QQmlIncubator
+{
+public:
+    DccIncubator(PluginManager *pManager, PluginData *plugin, QQmlComponent *component, QQmlContext *context, std::function<void(QQmlIncubator::Status, DccIncubator *)> &&fun)
+        : QQmlIncubator(Asynchronous)
+        , m_pManager(pManager)
+        , m_plugin(plugin)
+        , m_component(component)
+        , m_context(context)
+        , m_fun(std::move(fun))
+    {
+    }
+
+protected:
+    void statusChanged(Status status) override { m_fun(status, this); }
+
+public:
+    PluginManager *m_pManager;
+    PluginData *m_plugin;
+    QQmlComponent *m_component;
+    QQmlContext *m_context;
+    std::function<void(QQmlIncubator::Status, DccIncubator *)> m_fun;
+};
 
 PluginManager::PluginManager(DccManager *parent)
     : QObject(parent)
@@ -358,6 +380,12 @@ void PluginManager::loadPlugin(PluginData *plugin)
         addMainObject(plugin);
         Q_EMIT updatePluginStatus(plugin, PluginEnd, QString());
     } else if ((plugin->status & (DataEnd | MainObjLoad)) == DataEnd) {
+        if (plugin->data) {
+            plugin->data->setParent(parent());
+        }
+        if (plugin->soObj) {
+            plugin->soObj->setParent(parent());
+        }
         loadMain(plugin);
     } else if ((plugin->status & (ModuleEnd | DataBegin)) == ModuleEnd) {
         if (!m_modulePhaseFinished && allModulesFinished()) {
@@ -513,16 +541,11 @@ void PluginManager::createModule(QQmlComponent *component)
     Q_EMIT updatePluginStatus(plugin, ModuleCreate, "create module");
     switch (component->status()) {
     case QQmlComponent::Ready: {
-        QObject *object = component->create();
-        component->deleteLater();
-        if (!object) {
-            Q_EMIT updatePluginStatus(plugin, ModuleErr | ModuleEnd, " component create module object is null:" + component->errorString());
-            return;
-        }
-        object->setParent(m_rootModule);
-        plugin->module = qobject_cast<DccObject *>(object);
-        Q_EMIT updatePluginStatus(plugin, ModuleEnd, "create module finished");
-        m_manager->addObject(plugin->module);
+        DccIncubator *incubator = new DccIncubator(this, plugin, component, nullptr, std::bind(&PluginManager::incubatorStatusChangedModule, this, std::placeholders::_1, std::placeholders::_2));
+        component->create(*incubator, nullptr, nullptr);
+        connect(component, &QQmlComponent::destroyed, this, [incubator]() {
+            delete incubator;
+        });
     } break;
     case QQmlComponent::Error: {
         component->deleteLater();
@@ -544,15 +567,11 @@ void PluginManager::createMain(QQmlComponent *component)
     case QQmlComponent::Ready: {
         QQmlContext *context = new QQmlContext(component->engine());
         context->setContextProperties({ { "dccData", QVariant::fromValue(plugin->data) }, { "dccModule", QVariant::fromValue(plugin->module) } });
-        QObject *object = component->create(context);
-        component->deleteLater();
-        if (!object) {
-            Q_EMIT updatePluginStatus(plugin, MainObjErr | MainObjEnd, " component create main object is null:" + component->errorString());
-            return;
-        }
-        object->setParent(plugin->module ? plugin->module : m_rootModule);
-        plugin->mainObj = qobject_cast<DccObject *>(object);
-        Q_EMIT updatePluginStatus(plugin, MainObjEnd, ": create main finished");
+        DccIncubator *incubator = new DccIncubator(this, plugin, component, context, std::bind(&PluginManager::incubatorStatusChangedMain, this, std::placeholders::_1, std::placeholders::_2));
+        component->create(*incubator, context, nullptr);
+        connect(component, &QQmlComponent::destroyed, this, [incubator]() {
+            delete incubator;
+        });
     } break;
     case QQmlComponent::Error: {
         Q_EMIT updatePluginStatus(plugin, MainObjErr | MainObjEnd, " component create main object error:" + component->errorString());
@@ -601,6 +620,61 @@ void PluginManager::addMainObject(PluginData *plugin)
         Q_EMIT addObject(plugin->soObj);
     }
     Q_EMIT updatePluginStatus(plugin, MainObjEnd | PluginEnd, "add main object finished");
+}
+
+void PluginManager::incubatorStatusChangedModule(QQmlIncubator::Status status, DccIncubator *incubator)
+{
+    switch (status) {
+    case QQmlIncubator::Ready: {
+        QObject *obj = incubator->object();
+        incubator->m_component->deleteLater();
+        if (!obj) {
+            Q_EMIT updatePluginStatus(incubator->m_plugin, ModuleErr | ModuleEnd, " component create module object is null:" + incubator->m_component->errorString());
+            return;
+        }
+        if (m_rootModule) {
+            obj->setParent(m_rootModule);
+            incubator->m_plugin->module = qobject_cast<DccObject *>(obj);
+            Q_EMIT updatePluginStatus(incubator->m_plugin, ModuleEnd, "create module finished");
+            m_manager->addObject(incubator->m_plugin->module);
+        } else {
+            obj->deleteLater();
+            Q_EMIT updatePluginStatus(incubator->m_plugin, ModuleErr | ModuleEnd, " component create module object error:" + incubator->m_component->errorString());
+        }
+    } break;
+    case QQmlIncubator::Error: {
+        Q_EMIT updatePluginStatus(incubator->m_plugin, ModuleErr | ModuleEnd, " component create module object error:" + incubator->m_component->errorString());
+        incubator->m_component->deleteLater();
+    } break;
+    default:
+        break;
+    }
+}
+
+void PluginManager::incubatorStatusChangedMain(QQmlIncubator::Status status, DccIncubator *incubator)
+{
+    switch (status) {
+    case QQmlIncubator::Ready: {
+        QObject *obj = incubator->object();
+        incubator->m_component->deleteLater();
+        if (!obj) {
+            incubator->m_context->deleteLater();
+            Q_EMIT updatePluginStatus(incubator->m_plugin, MainObjErr | MainObjEnd, " component create main object is null:" + incubator->m_component->errorString());
+            return;
+        }
+        incubator->m_context->setParent(obj);
+        obj->setParent(incubator->m_plugin->module ? incubator->m_plugin->module : nullptr);
+        incubator->m_plugin->mainObj = qobject_cast<DccObject *>(obj);
+        Q_EMIT updatePluginStatus(incubator->m_plugin, MainObjEnd, ": create main finished");
+    } break;
+    case QQmlIncubator::Error: {
+        Q_EMIT updatePluginStatus(incubator->m_plugin, MainObjErr | MainObjEnd, " component create main object error:" + incubator->m_component->errorString());
+        incubator->m_component->deleteLater();
+        incubator->m_context->deleteLater();
+    } break;
+    default:
+        break;
+    }
 }
 
 void PluginManager::moduleLoading()

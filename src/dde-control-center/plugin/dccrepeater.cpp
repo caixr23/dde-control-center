@@ -24,6 +24,7 @@ public:
         , delegateValidated(false)
         , requestPending(false)
         , itemCount(0)
+        , targetParent(nullptr)
     {
     }
 
@@ -33,8 +34,17 @@ public:
             return;
 
         for (int i = 0; i < itemCount; i++) {
-            if (i >= deletables.size() || !deletables.at(i))
-                model->object(i, QQmlIncubator::AsynchronousIfNested);
+            if (i >= deletables.size() || !deletables.at(i)) {
+                QObject *obj = model->object(i, QQmlIncubator::Asynchronous);
+                if (obj) {
+                    if (deletables.size() > i && deletables.at(i) == obj) {
+                        model->release(obj);
+                    } else {
+                        q_ptr->createdItem(i, obj);
+                        q_ptr->initItem(i, obj);
+                    }
+                }
+            }
         }
     }
 
@@ -48,6 +58,7 @@ public:
     bool delegateValidated : 1;
     bool requestPending : 1;
     int itemCount = 0;
+    QPointer<DccObject> targetParent;
 
     QVector<QPointer<DccObject> > deletables;
 
@@ -88,9 +99,11 @@ void DccRepeater::setModel(const QVariant &m)
 
     clear();
     if (d->model) {
+        // clang-format off
         qmlobject_disconnect(d->model, QQmlInstanceModel, SIGNAL(modelUpdated(QQmlChangeSet,bool)), this, DccRepeater, SLOT(modelUpdated(QQmlChangeSet,bool)));
         qmlobject_disconnect(d->model, QQmlInstanceModel, SIGNAL(createdItem(int,QObject*)), this, DccRepeater, SLOT(createdItem(int,QObject*)));
         qmlobject_disconnect(d->model, QQmlInstanceModel, SIGNAL(initItem(int,QObject*)), this, DccRepeater, SLOT(initItem(int,QObject*)));
+        // clang-format on
     }
     d->dataSource = model;
     QObject *object = qvariant_cast<QObject *>(model);
@@ -114,9 +127,11 @@ void DccRepeater::setModel(const QVariant &m)
             dataModel->setModel(model);
     }
     if (d->model) {
+        // clang-format off
         qmlobject_connect(d->model, QQmlInstanceModel, SIGNAL(modelUpdated(QQmlChangeSet,bool)), this, DccRepeater, SLOT(modelUpdated(QQmlChangeSet,bool)));
         qmlobject_connect(d->model, QQmlInstanceModel, SIGNAL(createdItem(int,QObject*)), this, DccRepeater, SLOT(createdItem(int,QObject*)));
         qmlobject_connect(d->model, QQmlInstanceModel, SIGNAL(initItem(int,QObject*)), this, DccRepeater, SLOT(initItem(int,QObject*)));
+        // clang-format on
         regenerate();
     }
     Q_EMIT modelChanged();
@@ -144,9 +159,11 @@ void DccRepeater::setDelegate(QQmlComponent *delegate)
     if (!d->ownModel) {
         clear();
         if (d->model) {
+            // clang-format off
             qmlobject_disconnect(d->model, QQmlInstanceModel, SIGNAL(modelUpdated(QQmlChangeSet,bool)), this, DccRepeater, SLOT(modelUpdated(QQmlChangeSet,bool)));
             qmlobject_disconnect(d->model, QQmlInstanceModel, SIGNAL(createdItem(int,QObject*)), this, DccRepeater, SLOT(createdItem(int,QObject*)));
             qmlobject_disconnect(d->model, QQmlInstanceModel, SIGNAL(initItem(int,QObject*)), this, DccRepeater, SLOT(initItem(int,QObject*)));
+            // clang-format on
         }
 
         QQmlDelegateModel *dataModel = new QQmlDelegateModel(qmlContext(this), this);
@@ -155,9 +172,11 @@ void DccRepeater::setDelegate(QQmlComponent *delegate)
         d->ownModel = true;
         dataModel->componentComplete();
 
+        // clang-format off
         qmlobject_connect(d->model, QQmlInstanceModel, SIGNAL(modelUpdated(QQmlChangeSet,bool)), this, DccRepeater, SLOT(modelUpdated(QQmlChangeSet,bool)));
         qmlobject_connect(d->model, QQmlInstanceModel, SIGNAL(createdItem(int,QObject*)), this, DccRepeater, SLOT(createdItem(int,QObject*)));
         qmlobject_connect(d->model, QQmlInstanceModel, SIGNAL(initItem(int,QObject*)), this, DccRepeater, SLOT(initItem(int,QObject*)));
+        // clang-format on
     }
 
     if (QQmlDelegateModel *dataModel = qobject_cast<QQmlDelegateModel *>(d->model)) {
@@ -183,18 +202,26 @@ void DccRepeater::resetModel()
 
 void DccRepeater::createdItem(int index, QObject *item)
 {
+    Q_D(DccRepeater);
+    if (index < 0 || index >= d->deletables.size()) {
+        return;
+    }
     DccObject *dccObj = qmlobject_cast<DccObject *>(item);
     if (dccObj) {
-        DccObject *targetParent = this;
-        for (QObject *pQObj = this; pQObj; pQObj = pQObj->parent()) {
-            DccObject *pObj = qmlobject_cast<DccObject *>(pQObj);
-            if (pObj && !pObj->name().isEmpty()) {
-                targetParent = pObj;
-                break;
+        d->model->object(index);
+        if (!d->targetParent) {
+            DccObject *targetParent = this;
+            for (QObject *pQObj = this; pQObj; pQObj = pQObj->parent()) {
+                DccObject *pObj = qmlobject_cast<DccObject *>(pQObj);
+                if (pObj && !pObj->name().isEmpty()) {
+                    targetParent = pObj;
+                    break;
+                }
             }
+            d->targetParent = targetParent;
         }
-        dccObj->setParent(targetParent);
-        DccObject::Private::FromObject(targetParent)->addObject(dccObj);
+        dccObj->setParent(d->targetParent);
+        DccObject::Private::FromObject(d->targetParent)->addObject(dccObj);
         Q_EMIT objAdded(index, item);
     }
 }
@@ -202,23 +229,34 @@ void DccRepeater::createdItem(int index, QObject *item)
 void DccRepeater::initItem(int index, QObject *object)
 {
     Q_D(DccRepeater);
-    if (index >= d->deletables.size())
-        d->deletables.resize(d->model->count() + 1);
+    if (index < 0 || index >= d->deletables.size()) {
+        qmlWarning(this) << "deletables size error" << __LINE__ << __FUNCTION__ << index << d->deletables.size();
+        if (object) {
+            d->model->release(object);
+        }
+        return;
+    }
 
     DccObject *dccObj = qmlobject_cast<DccObject *>(object);
-    if (!d->deletables.at(index)) {
-        if (!dccObj) {
-            if (object) {
-                d->model->release(object);
-                if (!d->delegateValidated) {
-                    d->delegateValidated = true;
-                    QObject *delegate = this->delegate();
-                    qmlWarning(delegate ? delegate : this) << "Delegate must be of `DccObject` type";
-                }
+    // if (!d->deletables.at(index)) {
+    if (!dccObj) {
+        if (object) {
+            d->model->release(object);
+            if (!d->delegateValidated) {
+                d->delegateValidated = true;
+                QObject *delegate = this->delegate();
+                qmlWarning(delegate ? delegate : this) << "Delegate must be of `DccObject` type";
             }
-            return;
         }
+        return;
+    }
+    // d->deletables[index] = dccObj;
+    // }
+
+    if (!d->deletables.at(index)) {
         d->deletables[index] = dccObj;
+    } else if (d->deletables.at(index) != dccObj) {
+        d->model->release(object);
     }
 }
 
@@ -247,7 +285,9 @@ void DccRepeater::modelUpdated(const QQmlChangeSet &changeSet, bool reset)
                 d->deletables.remove(index);
                 Q_EMIT objRemoved(index, item);
                 if (item) {
-                    p_ptr->removeObject(item);
+                    if (d->targetParent) {
+                        d->targetParent->removeObject(item);
+                    }
                     d->model->release(item);
                     // item->setParentItem(nullptr);
                 }
@@ -329,7 +369,9 @@ void DccRepeater::clear()
         for (int i = d->deletables.size() - 1; i >= 0; --i) {
             if (DccObject *obj = d->deletables.at(i)) {
                 // reomve from dccApp
-                p_ptr->removeObject(obj);
+                if (d->targetParent) {
+                    d->targetParent->removeObject(obj);
+                }
                 Q_EMIT objRemoved(i, obj);
                 d->model->release(obj);
             }

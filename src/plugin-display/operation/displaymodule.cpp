@@ -14,7 +14,6 @@
 #include "private/displayworker.h"
 
 #include <QDateTime>
-#include <QJSValue>
 #include <QMetaObject>
 #include <QMetaType>
 #include <QQuickItem>
