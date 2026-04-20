@@ -74,6 +74,7 @@ DccManager::DccManager(QObject *parent)
     QJSEngine::setObjectOwnership(m_hideObjects, QQmlEngine::CppOwnership);
     QJSEngine::setObjectOwnership(m_noAddObjects, QQmlEngine::CppOwnership);
     QJSEngine::setObjectOwnership(m_noParentObjects, QQmlEngine::CppOwnership);
+    QJSEngine::setObjectOwnership(this, QQmlEngine::CppOwnership);
 
     initConfig();
     connect(m_plugins, &PluginManager::addObject, this, &DccManager::addObject);
@@ -622,8 +623,11 @@ QVector<DccObject *> DccManager::findObjects(const QString &url, bool one)
 const DccObject *DccManager::findParent(const DccObject *obj)
 {
     const QString &path = obj->parentName();
-    const DccObject *p = obj;
+    const DccObject *p = DccObject::Private::FromObject(obj)->getRecommendedParent();
     const QObject *op = obj;
+    if (p && !p->name().isEmpty() && isEqual(path, p)) {
+        return p;
+    }
     while (op) {
         op = op->parent();
         p = qobject_cast<const DccObject *>(op);
@@ -1093,9 +1097,7 @@ void DccManager::clearData()
 
 #ifdef DCC_ENABLE_MEMORY_MANAGEMENT
     // TODO: delete m_engine会有概率崩溃
-    if (m_window) {
-        delete m_window;
-    }
+    m_window = nullptr;
     qCDebug(dccLog()) << "delete root begin";
     DccObject *root = m_root;
     m_root = nullptr;
@@ -1110,11 +1112,6 @@ void DccManager::clearData()
     deleteObjects.append(m_hideObjects);
     while (!deleteObjects.isEmpty()) {
         auto obj = deleteObjects.takeFirst();
-        QVector<DccObject *> children = obj->getChildren();
-        while (!children.isEmpty()) {
-            delete children.first();
-            children = obj->getChildren();
-        }
         delete obj;
     }
     qCDebug(dccLog()) << "delete dccobject";
