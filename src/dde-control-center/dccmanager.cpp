@@ -9,6 +9,7 @@
 #include "navigationmodel.h"
 #include "pluginmanager.h"
 #include "searchmodel.h"
+#include "dcctracker.h"
 
 #include <DGuiApplicationHelper>
 #include <DIconTheme>
@@ -75,7 +76,8 @@ DccManager::DccManager(QObject *parent)
     QJSEngine::setObjectOwnership(m_noAddObjects, QQmlEngine::CppOwnership);
     QJSEngine::setObjectOwnership(m_noParentObjects, QQmlEngine::CppOwnership);
     QJSEngine::setObjectOwnership(this, QQmlEngine::CppOwnership);
-
+    DccTracker::instance()->addObject(this);
+    DccTracker::instance()->addObject(m_plugins);
     initConfig();
     connect(m_plugins, &PluginManager::addObject, this, &DccManager::addObject);
     connect(m_plugins, &PluginManager::loadAllFinished, this, &DccManager::tryShow, Qt::QueuedConnection);
@@ -120,6 +122,7 @@ QQmlApplicationEngine *DccManager::engine()
 
 void DccManager::setMainWindow(QWindow *window)
 {
+    DccTracker::instance()->addObject(window);
     m_window = window;
     connect(m_window, &QWindow::widthChanged, this, &DccManager::saveSize);
     connect(m_window, &QWindow::heightChanged, this, &DccManager::saveSize);

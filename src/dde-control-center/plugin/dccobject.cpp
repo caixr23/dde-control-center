@@ -4,6 +4,7 @@
 #include "dccobject.h"
 
 #include "dccobject_p.h"
+#include "dcctracker.h"
 
 #include <QLoggingCategory>
 #include <QQmlContext>
@@ -250,6 +251,7 @@ DccObject::DccObject(QObject *parent)
     : QObject(parent)
     , p_ptr(new DccObject::Private(this))
 {
+    DccTracker::instance()->addObject(this);
 }
 
 DccObject::~DccObject()

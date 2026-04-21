@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "controlcenterdbusadaptor.h"
 #include "dccmanager.h"
+#include "dcctracker.h"
 
 #include <DDBusSender>
 #include <DIconTheme>
@@ -228,5 +229,6 @@ int main(int argc, char *argv[])
     delete dccManager;
     delete app;
 #endif
+    dccV25::DccTracker::instance()->printUnreleasedObjects();
     return exitCode;
 }

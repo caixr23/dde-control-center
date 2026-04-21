@@ -6,7 +6,7 @@
 
 #include "dccfactory.h"
 #include "dccmanager.h"
-
+#include "dcctracker.h"
 #include <DIconTheme>
 
 #include <QDebug>
@@ -382,10 +382,13 @@ void PluginManager::loadPlugin(PluginData *plugin)
     } else if ((plugin->status & (DataEnd | MainObjLoad)) == DataEnd) {
         if (plugin->data) {
             plugin->data->setParent(parent());
+            DccTracker::instance()->addObject(plugin->data);
         }
         if (plugin->soObj) {
             plugin->soObj->setParent(parent());
+            DccTracker::instance()->addObject(plugin->soObj);
         }
+        DccTracker::instance()->addObject(plugin->factory);
         loadMain(plugin);
     } else if ((plugin->status & (ModuleEnd | DataBegin)) == ModuleEnd) {
         if (!m_modulePhaseFinished && allModulesFinished()) {
