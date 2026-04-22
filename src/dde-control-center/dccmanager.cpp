@@ -6,10 +6,10 @@
 #include "dccapp.h"
 #include "dccimageprovider.h"
 #include "dccobject_p.h"
+#include "dcctracker.h"
 #include "navigationmodel.h"
 #include "pluginmanager.h"
 #include "searchmodel.h"
-#include "dcctracker.h"
 
 #include <DGuiApplicationHelper>
 #include <DIconTheme>
@@ -251,6 +251,12 @@ void DccManager::removeObject(const QString &name)
 
 void DccManager::showPage(const QString &url)
 {
+    if (url == "gc") {
+        qWarning() << __LINE__ << __FUNCTION__ << "===gc begin===";
+        m_engine->collectGarbage();
+        qWarning() << __LINE__ << __FUNCTION__ << "===gc end===";
+        return;
+    }
     if (this->calledFromDBus()) {
         // show(); // 先查找再显示则注释掉此处
         int i = url.indexOf('?');

@@ -453,16 +453,17 @@ void PluginManager::loadModule(PluginData *plugin)
     case T_V1_0: {
         const QString qmlPath = plugin->path + "/" + plugin->name + ".qml";
         Q_EMIT updatePluginStatus(plugin, ModuleLoad, ": load module " + qmlPath);
-        component->loadUrl(qmlPath, QQmlComponent::Asynchronous);
+        component->loadUrl(qmlPath, QQmlComponent::PreferSynchronous);
     } break;
     case T_V1_1:
     default: {
         QString typeName = plugin->name;
         typeName[0] = typeName[0].toUpper();
         Q_EMIT updatePluginStatus(plugin, ModuleLoad, ": load module " + typeName);
-        component->loadFromModule(plugin->name, typeName, QQmlComponent::Asynchronous);
+        component->loadFromModule(plugin->name, typeName, QQmlComponent::PreferSynchronous);
     } break;
     }
+
 }
 
 void PluginManager::loadPluginData(PluginData *plugin)
@@ -499,14 +500,14 @@ void PluginManager::loadMain(PluginData *plugin)
     case T_V1_0: {
         const QString qmlPath = plugin->path + "/" + ((plugin->type & T_ShortMain) ? "main.qml" : plugin->name + "Main.qml");
         Q_EMIT updatePluginStatus(plugin, MainObjLoad, ": load Main " + qmlPath);
-        component->loadUrl(qmlPath, QQmlComponent::Asynchronous);
+        component->loadUrl(qmlPath, QQmlComponent::PreferSynchronous);
     } break;
     case T_V1_1:
     default: {
         QString typeName = plugin->name + "Main";
         typeName[0] = typeName[0].toUpper();
         Q_EMIT updatePluginStatus(plugin, MainObjLoad, ": load Main " + typeName);
-        component->loadFromModule(plugin->name, typeName, QQmlComponent::Asynchronous);
+        component->loadFromModule(plugin->name, typeName, QQmlComponent::PreferSynchronous);
     } break;
     }
 }
